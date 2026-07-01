@@ -1,6 +1,3 @@
-# Core dependencies
-Python>=3.10
-
 # Video Processing
 moviespy==1.0.3
 Pillow==10.1.0
