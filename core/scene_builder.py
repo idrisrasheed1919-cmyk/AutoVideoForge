@@ -4,7 +4,7 @@ from typing import Optional
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
 import numpy as np
-from moviepy.editor import ColorClip, TextClip, ImageClip, concatenate_videoclips
+import imageio
 
 from utils.logger import get_logger
 from config.settings import settings
@@ -29,7 +29,7 @@ class SceneBuilder:
         duration: float,
         background_color: tuple = (20, 20, 40),
     ) -> bool:
-        """Build video scenes.
+        """Build video scenes using imageio.
         
         Args:
             output_path: Output video path
@@ -42,36 +42,24 @@ class SceneBuilder:
         try:
             logger.info(f"Building scenes for {duration}s video...")
             
-            # Create background clip
-            bg_clip = ColorClip(
-                size=(self.width, self.height),
-                color=background_color,
-            ).set_duration(duration)
+            # Calculate number of frames
+            num_frames = int(duration * self.fps)
             
-            # Add title
-            title_text = "AutoVideoForge"
-            txt_clip = TextClip(
-                txt=title_text,
-                fontsize=80,
-                color="white",
-                font="Arial",
-                method="caption",
-                size=(self.width - 100, None),
-            ).set_duration(duration).set_position("center")
+            # Create frames
+            frames = []
+            for i in range(num_frames):
+                # Create background frame
+                frame = np.zeros((self.height, self.width, 3), dtype=np.uint8)
+                frame[:] = background_color
+                frames.append(frame)
             
-            # Composite clips
-            video = concatenate_videoclips([bg_clip.set_fps(self.fps)])
-            final = CompositeVideoClip([video, txt_clip])
-            
-            # Write video
-            final.write_videofile(
-                str(output_path),
-                fps=self.fps,
-                codec=settings.video_codec,
-                audio=False,
-                verbose=False,
-                logger=None,
-            )
+            # Write video using imageio
+            logger.info(f"Writing {len(frames)} frames to video...")
+            output_path.parent.mkdir(parents=True, exist_ok=True)
+            writer = imageio.get_writer(str(output_path), fps=self.fps, codec='libx264')
+            for frame in frames:
+                writer.append_data(frame)
+            writer.close()
             
             logger.info(f"Scenes built: {output_path}")
             return True
